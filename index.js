@@ -2,6 +2,8 @@ const express = require('express');
 const Joi = require('joi');
 const authentication = require('./authentication');
 //const port = 3000;
+const jwt = require('jsonwebtoken');
+const { verify } = require('crypto');
 const app = express(); // Express application
 
 app.use(express.json()); // data will be in json format
@@ -40,6 +42,39 @@ app.post('/api/courses' , (req,res) => {
     };
     courses.push(course);
     res.send(course);
+});
+
+// Protected route...
+app.post('/api/posts', verifyToken, (req, res) => {
+     jwt.verify(req.token, 'secretkey', (err, authData) => {
+      if(err) {
+          res.sendStatus(403);
+      } else {
+          res.json({
+              message: 'Post Created....',
+              authData
+          });
+      }
+     });
+     res.json({
+         message: 'Post Created....'
+     });
+});
+
+// API authentication with JWT........
+app.post('/api/login', (req,res) => {
+    // Mock user
+     const user = {
+    id : 1,
+    username : 'Pawan',
+    email: 'pawan.gupta@gmail.com'
+     }
+
+     jwt.sign({user}, 'secretkey', (err, token) => {
+       res.json({
+           token
+       });
+     });
 });
 
 app.put('/api/courses/:id', (req,res) => {
@@ -85,6 +120,31 @@ app.delete('/api/courses/:id', (req,res) => {
     // return the same course
     res.send(course);
 })
+
+// FORMAT OF TOKEN
+// Authorization: Bearer <access_token>
+
+// Verify Token...
+function verifyToken(req,res,next) {
+    // get auth header value..
+    const bearerHeader = req.headers['authorization'];
+    // check if bearer is undefined
+    if(typeof bearerHeader !== 'undefined') {
+        // Split at the Space
+        const bearer = bearerHeader.split(' ');
+        // Get token from array
+        const bearerToken =bearer[1];
+        //set the token
+        req.token = bearerToken;
+        // Next middleware.
+        next();
+
+    } 
+    else{
+        // Forbidden
+        res.sendStatus(403);
+    }
+}
 
 const port = process.env.PORT || 3000;    // setting env var ... use exoprt command...
 app.listen(port, () => console.log(`Listning on port ${port}...`));
